@@ -73,7 +73,7 @@ export function ThemeToggle({
         className,
       )}
     >
-      <Icon className="size-5" aria-hidden="true" />
+      <Icon className="size-6" aria-hidden="true" />
     </button>
   );
 }
