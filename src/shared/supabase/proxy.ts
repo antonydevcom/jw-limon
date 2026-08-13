@@ -21,13 +21,7 @@ export async function updateSession(request: NextRequest) {
     },
   })
 
-  const { data } = await supabase.auth.getClaims()
-  if (!data?.claims && request.nextUrl.pathname.startsWith("/dashboard")) {
-    const loginUrl = request.nextUrl.clone()
-    loginUrl.pathname = "/login"
-    loginUrl.search = ""
-    return NextResponse.redirect(loginUrl)
-  }
+  await supabase.auth.getClaims()
 
   response.headers.set("Cache-Control", "private, no-store")
   return response

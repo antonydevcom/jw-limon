@@ -36,5 +36,5 @@ export async function logoutUser(): Promise<void> {
   const supabase = await createSupabaseServerClient()
   await supabase.auth.signOut()
   revalidatePath("/", "layout")
-  redirect("/login")
+  redirect("/dashboard")
 }

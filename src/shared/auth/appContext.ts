@@ -1,6 +1,7 @@
 import { cache } from "react"
 import { redirect } from "next/navigation"
 import { createSupabaseServerClient } from "@/shared/supabase/serverClient"
+import { createSupabaseAdminClient } from "@/shared/supabase/adminClient"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database.types"
 
@@ -14,17 +15,30 @@ export interface AppContext {
   role: AppRole
 }
 
-/**
- * Resolves authenticated identity and membership once per request.
- * All data access keeps the user's JWT, so Postgres RLS remains authoritative.
- */
 export const getAppContext = cache(async (): Promise<AppContext> => {
   const supabase = await createSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) redirect("/login")
+  if (!user) {
+    // Public viewer: look up congregation with admin client (bypasses RLS).
+    // Anon Supabase client enforces published-only RLS for all subsequent queries.
+    const adminClient = createSupabaseAdminClient()
+    const { data: congregation } = await adminClient
+      .from("congregations")
+      .select("id")
+      .limit(1)
+      .maybeSingle()
+
+    return {
+      supabase,
+      congregationId: congregation?.id ?? "",
+      userId: "",
+      isAdmin: false,
+      role: "viewer",
+    }
+  }
 
   const { data: membership } = await supabase
     .from("congregation_memberships")

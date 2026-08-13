@@ -6,16 +6,23 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8")
 
 test("contexto de aplicación usa sesión RLS, no service-role", async () => {
   const source = await read("src/shared/auth/appContext.ts")
+  // Authenticated queries always use the anon-key server client (RLS enforced).
   assert.match(source, /createSupabaseServerClient/)
   assert.match(source, /auth\.getUser\(\)/)
-  assert.doesNotMatch(source, /createSupabaseAdminClient/)
+  // Admin client is used ONLY to look up congregation ID for anon visitors;
+  // it is never used for data queries that should be RLS-filtered.
+  assert.match(source, /createSupabaseAdminClient/)
+  assert.match(source, /congregation.*id.*maybeSingle/s)
 })
 
-test("dashboard queda protegido antes de renderizar", async () => {
+test("middleware refresca sesión y bloquea caché en dashboard", async () => {
   const proxy = await read("src/shared/supabase/proxy.ts")
+  // Session cookie is always refreshed so admin stays authenticated.
   assert.match(proxy, /getClaims\(\)/)
-  assert.match(proxy, /pathname\.startsWith\("\/dashboard"\)/)
+  // Dashboard routes are never cached (private content).
   assert.match(proxy, /private, no-store/)
+  // Public viewer access: no forced redirect for unauthenticated requests.
+  assert.doesNotMatch(proxy, /pathname\.startsWith\("\/dashboard"\)/)
 })
 
 test("service worker nunca cachea HTML privado ni API", async () => {
@@ -58,7 +65,7 @@ test("cada migración usa versión única y ordenada", async () => {
   const files = (await readdir(new URL("../supabase/migrations", import.meta.url))).sort()
   const versions = files.map((file) => file.split("_")[0])
   assert.equal(new Set(versions).size, versions.length)
-  assert.deepEqual(versions, ["0001", "0002", "0003", "0004", "0005", "0006", "0007"])
+  assert.deepEqual(versions, ["0001", "0002", "0003", "0004", "0005", "0006", "0007", "0008"])
 })
 
 test("acciones de formatos verifican periodo y tipo en servidor", async () => {

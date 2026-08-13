@@ -8,13 +8,14 @@ export default async function AppLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  await getAppContext();
+  const { userId } = await getAppContext();
   const preferences = await getUserPreferences();
 
   return (
     <AppShell
       initialAccent={preferences.accent}
       initialTheme={preferences.theme}
+      isAuthenticated={!!userId}
     >
       {children}
     </AppShell>
