@@ -748,7 +748,7 @@ function SectionHeader({
       >
         <div className="flex items-center gap-3">
           <span
-            className="flex size-8 items-center justify-center text-white"
+            className="flex size-8 items-center justify-center rounded-md text-white"
             style={{ backgroundColor: SECTION_ICON_COLOR[section] }}
           >
             <Icon className="size-4 stroke-[1.9]" aria-hidden="true" />

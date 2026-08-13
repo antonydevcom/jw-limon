@@ -363,13 +363,11 @@ export default async function DashboardPage() {
     <div className="mx-auto max-w-6xl space-y-5 pb-8">
       {nextCongregationEvent && <EventBanner event={nextCongregationEvent} />}
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
-        <TodayServicePanel
-          todayString={todayString}
-          rows={todayServiceRows}
-          nextServiceDay={nextServiceDay}
-        />
-      </section>
+      <TodayServicePanel
+        todayString={todayString}
+        rows={todayServiceRows}
+        nextServiceDay={nextServiceDay}
+      />
 
       <section className="grid gap-4 lg:grid-cols-2">
         {/* Render chronological source directly: never prioritize meeting type over date. */}

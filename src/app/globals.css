@@ -32,7 +32,7 @@
   --section-ministry-icon: rgb(0 0 0 / 12%);
   --section-living: #9f2d2d;
   --section-living-icon: rgb(0 0 0 / 12%);
-  --radius: 2px;
+  --radius: 0.75rem;
   --card-radius: 1.125rem;
   --control-radius: 999px;
   --card-border: rgb(91 34 144 / 10%);
@@ -260,7 +260,7 @@ body {
   margin: 0;
   background: var(--shell-gradient);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter, system-ui, sans-serif);
   letter-spacing: 0;
   overflow-wrap: anywhere;
 }

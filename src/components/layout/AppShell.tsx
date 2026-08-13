@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Citrus, LogOut } from "lucide-react";
+
 import { logoutUser } from "@/features/admin-auth/actions";
 import { ColorAccentPicker } from "@/components/layout/ColorAccentPicker";
 import { DesktopNavigation } from "@/components/layout/DesktopNavigation";
@@ -48,10 +49,10 @@ export function AppShell({
       <div className="lg:pl-[22rem]">
         <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--app-bar-muted)] px-5 pb-3 pt-12 text-[var(--on-app-bar)] lg:hidden">
           <div className="flex items-end justify-between gap-4">
-            <Link
-              href="/dashboard"
-              className="font-semibold"
-            >
+            <Link href="/dashboard" className="flex items-center gap-3 font-semibold">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary)]">
+                <Citrus className="size-5 stroke-[1.8]" aria-hidden="true" />
+              </span>
               <span className="text-[1.7rem] leading-none tracking-normal">El Limón</span>
             </Link>
           </div>

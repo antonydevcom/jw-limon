@@ -19,7 +19,7 @@ export function PageHeading({
         <span>{title}</span>
       </h1>
       {subtitle && (
-        <p className="mt-2 text-sm leading-6 text-[var(--foreground)] sm:text-base">
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)] sm:text-base">
           {subtitle}
         </p>
       )}
