@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Citrus, LogIn, LogOut } from "lucide-react";
+import { Citrus, LogOut } from "lucide-react";
 import { logoutUser } from "@/features/admin-auth/actions";
 import { DesktopNavigation } from "@/components/layout/DesktopNavigation";
 import { MobileNavigation } from "@/components/layout/MobileNavigation";
@@ -61,16 +61,12 @@ export function AppShell({
       </div>
       <div className="fixed right-3 top-[calc(2.15rem+env(safe-area-inset-top))] z-20 flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)]/95 p-1 shadow-[var(--shadow-soft)] backdrop-blur lg:bottom-8 lg:left-8 lg:right-auto lg:top-auto lg:gap-2 lg:p-2">
         <ThemeToggle className="text-[var(--primary)]" initialTheme={initialTheme} />
-        {isAuthenticated ? (
+        {isAuthenticated && (
           <form action={logoutUser}>
             <button type="submit" className="flex size-11 items-center justify-center rounded-full text-[var(--primary)] transition-colors hover:bg-[var(--surface-muted)]" aria-label="Cerrar sesión" title="Cerrar sesión">
               <LogOut className="size-6 stroke-[1.7]" aria-hidden="true" />
             </button>
           </form>
-        ) : (
-          <Link href="/admin" className="flex size-11 items-center justify-center rounded-full text-[var(--primary)] transition-colors hover:bg-[var(--surface-muted)]" aria-label="Acceso administrador" title="Acceso administrador">
-            <LogIn className="size-6 stroke-[1.7]" aria-hidden="true" />
-          </Link>
         )}
       </div>
       <MobileNavigation />
