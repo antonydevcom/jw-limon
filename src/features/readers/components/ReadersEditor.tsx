@@ -212,10 +212,10 @@ export function ReadersEditor({
                 key={`${row.meeting_date}-${row.reader_type}`}
                 className="border-b border-[var(--border)] last:border-b-0"
               >
-                <td className="w-36 border-r border-[var(--border)] px-3 py-2 text-[var(--muted)]">
+                <td className="w-20 border-r border-[var(--border)] px-3 py-2 text-[var(--muted)]">
                   {formatShortDateSpanish(row.meeting_date)}
                 </td>
-                <td className="w-56 border-r border-[var(--border)] px-3 py-2 text-[var(--foreground)]">
+                <td className="w-28 border-r border-[var(--border)] px-3 py-2 text-[var(--foreground)]">
                   {TIPO_LABEL[row.reader_type]}
                 </td>
                 <td className="px-3 py-1.5">

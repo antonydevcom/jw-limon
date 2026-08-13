@@ -208,7 +208,61 @@ export function DutiesEditor({
       {confirmDialog}
       {header}
       <div className="app-table-card">
-        <table className="w-full border-collapse text-sm">
+        {/* Mobile: card per date */}
+        <div className="divide-y divide-[var(--border)] sm:hidden">
+          {rows.map((row) => (
+            <div key={row.meeting_date} className="px-3 py-3">
+              <p className="mb-2 text-xs font-semibold text-[var(--muted)]">
+                {formatShortDateSpanish(row.meeting_date)}
+              </p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div className="space-y-1">
+                  <p className="text-xs text-[var(--muted)]">De entrada</p>
+                  <FormatCell
+                    value={row.entrance_name}
+                    onChange={(v) => updateField(row.meeting_date, "entrance_name", v)}
+                    readOnly={!isAdmin}
+                    placeholder="Nombre..."
+                    invalid={showErrors && !row.entrance_name.trim()}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-[var(--muted)]">De auditorio</p>
+                  <FormatCell
+                    value={row.auditorium_name}
+                    onChange={(v) => updateField(row.meeting_date, "auditorium_name", v)}
+                    readOnly={!isAdmin}
+                    placeholder="Nombre..."
+                    invalid={showErrors && !row.auditorium_name.trim()}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-[var(--muted)]">Mic. 1</p>
+                  <FormatCell
+                    value={row.microphone_1_name}
+                    onChange={(v) => updateField(row.meeting_date, "microphone_1_name", v)}
+                    readOnly={!isAdmin}
+                    placeholder="Nombre..."
+                    invalid={showErrors && !row.microphone_1_name.trim()}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-[var(--muted)]">Mic. 2</p>
+                  <FormatCell
+                    value={row.microphone_2_name}
+                    onChange={(v) => updateField(row.meeting_date, "microphone_2_name", v)}
+                    readOnly={!isAdmin}
+                    placeholder="Nombre..."
+                    invalid={showErrors && !row.microphone_2_name.trim()}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: full table */}
+        <table className="hidden w-full border-collapse text-sm sm:table">
           <thead>
             <tr className="bg-[var(--surface)] text-[var(--foreground)]">
               <th className="border border-[var(--border)] px-3 py-1.5" />
@@ -248,7 +302,7 @@ export function DutiesEditor({
                 key={row.meeting_date}
                 className="border-b border-[var(--border)] last:border-b-0"
               >
-                <td className="w-32 whitespace-nowrap border-r border-[var(--border)] px-3 py-2 text-[var(--muted)]">
+                <td className="w-20 whitespace-nowrap border-r border-[var(--border)] px-3 py-2 text-[var(--muted)]">
                   {formatShortDateSpanish(row.meeting_date)}
                 </td>
                 <td className="border-r border-[var(--border)] px-2 py-1.5">
