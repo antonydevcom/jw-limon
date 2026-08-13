@@ -16,6 +16,5 @@ test("controles cliente no cargan preferencias mediante Server Actions", async (
 test("layout carga preferencias una sola vez y las entrega al shell", async () => {
   const layout = await read("src/app/(app)/layout.tsx")
   assert.equal(layout.match(/getUserPreferences\(\)/g)?.length, 1)
-  assert.match(layout, /initialAccent=/)
   assert.match(layout, /initialTheme=/)
 })

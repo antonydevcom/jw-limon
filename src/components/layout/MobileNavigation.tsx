@@ -2,7 +2,6 @@
 
 import { MoreHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ColorAccentPicker } from "@/components/layout/ColorAccentPicker";
 import {
   NavigationLink,
   useNavigationState,
@@ -94,10 +93,6 @@ export function MobileNavigation() {
               Más secciones
             </p>
             <div className="flex items-center gap-1">
-              <ColorAccentPicker
-                className="text-[var(--foreground)]"
-                menuPlacement="bottom"
-              />
               <ThemeToggle className="text-[var(--foreground)]" />
               <button
                 ref={closeButtonRef}

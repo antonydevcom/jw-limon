@@ -46,24 +46,11 @@ const themeScript = `
 (() => {
   try {
     const storedTheme = window.localStorage.getItem("theme");
-    const theme = storedTheme === "light" || storedTheme === "dark"
-      ? storedTheme
-      : "light";
-    const storedAccent = window.localStorage.getItem("accent");
-    const accent =
-      storedAccent === "purple" ||
-      storedAccent === "green" ||
-      storedAccent === "blue" ||
-      storedAccent === "pink" ||
-      storedAccent === "orange"
-      ? storedAccent
-      : "purple";
+    const theme = storedTheme === "light" || storedTheme === "dark" ? storedTheme : "light";
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.dataset.theme = theme;
-    document.documentElement.dataset.accent = accent;
   } catch {
     document.documentElement.dataset.theme = "light";
-    document.documentElement.dataset.accent = "purple";
   }
 })();
 `;

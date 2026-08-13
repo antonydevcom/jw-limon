@@ -2,21 +2,18 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Citrus, LogIn, LogOut } from "lucide-react";
 import { logoutUser } from "@/features/admin-auth/actions";
-import { ColorAccentPicker } from "@/components/layout/ColorAccentPicker";
 import { DesktopNavigation } from "@/components/layout/DesktopNavigation";
 import { MobileNavigation } from "@/components/layout/MobileNavigation";
 import { NavigationProvider } from "@/components/layout/NavigationProvider";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
-import type { AccentPreference, ThemePreference } from "@/features/settings/types/preferences";
+import type { ThemePreference } from "@/features/settings/types/preferences";
 
 export function AppShell({
   children,
-  initialAccent,
   initialTheme,
   isAuthenticated = false,
 }: {
   children: ReactNode;
-  initialAccent?: AccentPreference;
   initialTheme?: ThemePreference;
   isAuthenticated?: boolean;
 }) {
@@ -63,7 +60,6 @@ export function AppShell({
         </main>
       </div>
       <div className="fixed right-3 top-[calc(2.15rem+env(safe-area-inset-top))] z-20 flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)]/95 p-1 shadow-[var(--shadow-soft)] backdrop-blur lg:bottom-8 lg:left-8 lg:right-auto lg:top-auto lg:gap-2 lg:p-2">
-        <ColorAccentPicker className="text-[var(--primary)]" menuPlacement="bottom" initialAccent={initialAccent} />
         <ThemeToggle className="text-[var(--primary)]" initialTheme={initialTheme} />
         {isAuthenticated ? (
           <form action={logoutUser}>

@@ -13,7 +13,6 @@ export default async function AppLayout({
 
   return (
     <AppShell
-      initialAccent={preferences.accent}
       initialTheme={preferences.theme}
       isAuthenticated={!!userId}
     >
