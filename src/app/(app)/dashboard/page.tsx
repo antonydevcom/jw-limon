@@ -74,7 +74,8 @@ function todayInMexico(): Date {
 function getUpcomingMeetings(today: Date): UpcomingMeeting[] {
   const meetings: UpcomingMeeting[] = []
 
-  for (let offset = 1; offset <= 14 && meetings.length < 2; offset++) {
+  // Offset 0 keeps today's meeting visible all day; it drops off tomorrow.
+  for (let offset = 0; offset <= 14 && meetings.length < 2; offset++) {
     const date = addDays(today, offset)
     const weekday = date.getDay()
     const dateString = toDateString(date)
@@ -453,8 +454,8 @@ function EventBanner({ event }: { event: CongregationEvent }) {
           <p className="truncate text-base font-bold text-[var(--foreground)]">
             {event.title}
           </p>
-          <p className="text-sm font-semibold text-[var(--primary-strong)]">
-            {formatShortDateSpanish(event.event_date)}
+          <p className="text-sm font-semibold text-[var(--primary-strong)] first-letter:uppercase">
+            {formatFullDateSpanish(event.event_date)}
           </p>
         </div>
       </div>

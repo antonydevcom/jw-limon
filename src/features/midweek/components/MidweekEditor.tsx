@@ -106,6 +106,14 @@ function dedupeParts(parts: PartState[]): PartState[] {
   )
 }
 
+/** Responsible and helper share one field: "Responsable / Ayudante". */
+function combineNames(...names: Array<string | null | undefined>): string {
+  return names
+    .map((name) => name?.trim() ?? "")
+    .filter(Boolean)
+    .join(" / ")
+}
+
 function defaultParts(): PartState[] {
   return [
     { section: "treasures", sort_order: 1, title: "", duration_minutes: 10, assigned_name: "", assistant_name: "" },
@@ -133,8 +141,8 @@ function buildWeek(
             sort_order: p.sort_order,
             title: p.title ?? "",
             duration_minutes: p.duration_minutes,
-            assigned_name: p.assigned_name ?? "",
-            assistant_name: p.assistant_name ?? "",
+            assigned_name: combineNames(p.assigned_name, p.assistant_name),
+            assistant_name: "",
           })),
         )
       : defaultParts()
@@ -176,6 +184,7 @@ export function MidweekEditor({
   const [dirtyDates, setDirtyDates] = useState<Set<string>>(new Set())
   const [showErrors, setShowErrors] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [publishPending, startPublishTransition] = useTransition()
   const weeksRef = useRef(weeks)
 
@@ -217,7 +226,9 @@ export function MidweekEditor({
       setDirtyDates(new Set())
       for (const date of dates) {
         const w = weeksRef.current.find((x) => x.meeting_date === date)
-        if (w) await persistWeek(w)
+        if (!w) continue
+        const result = await persistWeek(w)
+        setSaveError(result.error)
       }
     }, 1000)
     return () => clearTimeout(timer)
@@ -248,7 +259,9 @@ export function MidweekEditor({
     setShowConfirm(false)
     startPublishTransition(async () => {
       const saveResults = await Promise.all(weeksRef.current.map(persistWeek))
-      if (saveResults.some((result) => result.error)) return
+      const failed = saveResults.find((result) => result.error)
+      setSaveError(failed?.error ?? null)
+      if (failed) return
       setDirtyDates(new Set())
       const publishResult = await publishPeriod(period.id, basePath)
       if (!publishResult.error) router.refresh()
@@ -258,7 +271,9 @@ export function MidweekEditor({
   function handleSavePublished() {
     startPublishTransition(async () => {
       const saveResults = await Promise.all(weeksRef.current.map(persistWeek))
-      if (!saveResults.some((result) => result.error)) router.refresh()
+      const failed = saveResults.find((result) => result.error)
+      setSaveError(failed?.error ?? null)
+      if (!failed) router.refresh()
     })
   }
 
@@ -431,6 +446,15 @@ export function MidweekEditor({
     </div>
   ) : null
 
+  const saveErrorNotice = saveError ? (
+    <p
+      role="alert"
+      className="rounded-2xl bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-4 py-3 text-sm font-semibold text-[var(--danger)]"
+    >
+      No se pudieron guardar los cambios. Intenta de nuevo.
+    </p>
+  ) : null
+
   const header = (
     <PageHeading title="Reunión Semanal">
       <PeriodBar
@@ -526,7 +550,7 @@ export function MidweekEditor({
                 part={p}
                 number={displayNumber(week, "treasures", p.sort_order)}
                 isAdmin={isAdmin}
-                showAssistant={false}
+                placeholder="Asignado"
                 showErrors={showErrors}
                 onTitle={(v) =>
                   updatePart(week.meeting_date, "treasures", p.sort_order, "title", v)
@@ -534,7 +558,6 @@ export function MidweekEditor({
                 onAssigned={(v) =>
                   updatePart(week.meeting_date, "treasures", p.sort_order, "assigned_name", v)
                 }
-                onAssistant={() => {}}
                 onDuration={(v) =>
                   updateDuration(week.meeting_date, "treasures", p.sort_order, v)
                 }
@@ -559,16 +582,13 @@ export function MidweekEditor({
                 part={p}
                 number={displayNumber(week, "ministry", p.sort_order)}
                 isAdmin={isAdmin}
-                showAssistant
+                placeholder="Estudiante / Ayudante"
                 showErrors={showErrors}
                 onTitle={(v) =>
                   updatePart(week.meeting_date, "ministry", p.sort_order, "title", v)
                 }
                 onAssigned={(v) =>
                   updatePart(week.meeting_date, "ministry", p.sort_order, "assigned_name", v)
-                }
-                onAssistant={(v) =>
-                  updatePart(week.meeting_date, "ministry", p.sort_order, "assistant_name", v)
                 }
                 onDuration={(v) =>
                   updateDuration(week.meeting_date, "ministry", p.sort_order, v)
@@ -615,17 +635,13 @@ export function MidweekEditor({
                 part={p}
                 number={displayNumber(week, "living", p.sort_order)}
                 isAdmin={isAdmin}
-                showAssistant
-                assistantLabel="Lector:"
+                placeholder="Nombre / Lector"
                 showErrors={showErrors}
                 onTitle={(v) =>
                   updatePart(week.meeting_date, "living", p.sort_order, "title", v)
                 }
                 onAssigned={(v) =>
                   updatePart(week.meeting_date, "living", p.sort_order, "assigned_name", v)
-                }
-                onAssistant={(v) =>
-                  updatePart(week.meeting_date, "living", p.sort_order, "assistant_name", v)
                 }
                 onDuration={(v) =>
                   updateDuration(week.meeting_date, "living", p.sort_order, v)
@@ -693,6 +709,7 @@ export function MidweekEditor({
       <div className="space-y-6">
         {confirmDialog}
         {header}
+        {saveErrorNotice}
         {weeks.map(renderCard)}
       </div>
     )
@@ -783,12 +800,10 @@ interface PartRowProps {
   part: PartState
   number: number
   isAdmin: boolean
-  showAssistant: boolean
-  assistantLabel?: string
+  placeholder: string
   showErrors: boolean
   onTitle: (v: string) => void
   onAssigned: (v: string) => void
-  onAssistant: (v: string) => void
   onDuration: (v: number | null) => void
   onRemove: () => void
 }
@@ -797,12 +812,10 @@ function PartRow({
   part,
   number,
   isAdmin,
-  showAssistant,
-  assistantLabel,
+  placeholder,
   showErrors,
   onTitle,
   onAssigned,
-  onAssistant,
   onDuration,
   onRemove,
 }: PartRowProps) {
@@ -843,28 +856,15 @@ function PartRow({
           />
         </div>
       </td>
-      <td className="px-3 py-1.5">
+      <td className="min-w-[9rem] px-3 py-1.5">
         <div className="flex items-baseline gap-1">
           <FormatCell
             value={part.assigned_name}
             onChange={onAssigned}
             readOnly={!isAdmin}
-            placeholder="Asignado"
+            placeholder={placeholder}
             invalid={showErrors && !part.assigned_name.trim()}
           />
-          {showAssistant && (
-            <>
-              <span className="whitespace-nowrap text-xs text-[var(--muted)]">
-                {assistantLabel ?? "/"}
-              </span>
-              <FormatCell
-                value={part.assistant_name}
-                onChange={onAssistant}
-                readOnly={!isAdmin}
-                placeholder="Ayudante"
-              />
-            </>
-          )}
           {isAdmin && (
             <button
               onClick={onRemove}

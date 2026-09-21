@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { requireAdminContext } from "@/shared/auth/appContext"
 import type { Database } from "@/types/database.types"
 import { databaseError, invalidInputError, midweekSaveSchema } from "@/shared/validation/actionSchemas"
@@ -62,35 +63,88 @@ export async function saveMidweekWeek(
 
   if (meetingError) return databaseError()
 
-  if (parts.length > 0) {
-    const { data: savedParts, error: partsError } = await supabase.from("midweek_parts").upsert(
-      parts.map((p) => ({
-        congregation_id: congregationId,
-        meeting_id: meeting.id,
-        section: p.section,
-        sort_order: p.sort_order,
-        title: p.title || null,
-        duration_minutes: p.duration_minutes,
-        assigned_name: p.assigned_name || null,
-        assistant_name: p.assistant_name || null,
-      })),
-      { onConflict: "meeting_id,section,sort_order" },
-    ).select("id")
-    if (partsError) return databaseError()
-    const savedIds = savedParts?.map((part) => part.id) ?? []
-    const deleteQuery = supabase.from("midweek_parts").delete().eq("meeting_id", meeting.id)
-    const { error: deleteError } = savedIds.length
-      ? await deleteQuery.not("id", "in", `(${savedIds.join(",")})`)
-      : await deleteQuery
-    if (deleteError) return databaseError()
-  } else {
-    const { error: deleteError } = await supabase
-      .from("midweek_parts")
-      .delete()
-      .eq("meeting_id", meeting.id)
-    if (deleteError) return databaseError()
-  }
+  const partsError = await syncParts(supabase, congregationId, meeting.id, parts)
+  if (partsError) return databaseError()
 
   revalidatePath("/dashboard/reunion-semanal")
   return { error: null }
+}
+
+type PartKey = `${Section}:${number}`
+
+const partKey = (section: Section, sortOrder: number): PartKey => `${section}:${sortOrder}`
+
+/**
+ * Update-by-id / insert / delete-stale instead of `upsert ... ON CONFLICT`,
+ * so saving never depends on a unique index existing in the remote database
+ * and legacy duplicate rows get cleaned up.
+ */
+async function syncParts(
+  supabase: SupabaseClient<Database>,
+  congregationId: string,
+  meetingId: string,
+  parts: PartData[],
+): Promise<boolean> {
+  const { data: existing, error: readError } = await supabase
+    .from("midweek_parts")
+    .select("id, section, sort_order")
+    .eq("meeting_id", meetingId)
+    .order("created_at", { ascending: true })
+  if (readError) return true
+
+  const idByKey = new Map<PartKey, string>()
+  const staleIds: string[] = []
+  for (const row of existing ?? []) {
+    const key = partKey(row.section, row.sort_order)
+    if (idByKey.has(key)) staleIds.push(row.id)
+    else idByKey.set(key, row.id)
+  }
+
+  const toRow = (p: PartData) => ({
+    title: p.title || null,
+    duration_minutes: p.duration_minutes,
+    assigned_name: p.assigned_name || null,
+    assistant_name: p.assistant_name || null,
+  })
+
+  const inserts: Database["public"]["Tables"]["midweek_parts"]["Insert"][] = []
+  const updates: Array<PromiseLike<{ error: unknown }>> = []
+  const keptKeys = new Set<PartKey>()
+
+  for (const p of parts) {
+    const key = partKey(p.section, p.sort_order)
+    if (keptKeys.has(key)) continue
+    keptKeys.add(key)
+    const existingId = idByKey.get(key)
+    if (existingId) {
+      updates.push(supabase.from("midweek_parts").update(toRow(p)).eq("id", existingId))
+    } else {
+      inserts.push({
+        congregation_id: congregationId,
+        meeting_id: meetingId,
+        section: p.section,
+        sort_order: p.sort_order,
+        ...toRow(p),
+      })
+    }
+  }
+
+  for (const [key, id] of idByKey) {
+    if (!keptKeys.has(key)) staleIds.push(id)
+  }
+
+  const results = await Promise.all(updates)
+  if (results.some((result) => result.error)) return true
+
+  if (inserts.length > 0) {
+    const { error } = await supabase.from("midweek_parts").insert(inserts)
+    if (error) return true
+  }
+
+  if (staleIds.length > 0) {
+    const { error } = await supabase.from("midweek_parts").delete().in("id", staleIds)
+    if (error) return true
+  }
+
+  return false
 }
