@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { PageHeading } from "@/components/layout/PageHeading"
 import { PeriodBar } from "@/features/schedule-templates/components/PeriodBar"
+import { SaveErrorNotice } from "@/features/schedule-templates/components/SaveErrorNotice"
+import { safeSave } from "@/features/schedule-templates/utils/safeSave"
 import {
   GroupNumberField,
   normalizeGroupNumber,
@@ -47,6 +49,7 @@ export function HospitalityEditor({
     })),
   )
   const [dirtyVersion, setDirtyVersion] = useState(0)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [showErrors, setShowErrors] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [publishPending, startPublishTransition] = useTransition()
@@ -59,7 +62,8 @@ export function HospitalityEditor({
   useEffect(() => {
     if (!isAdmin || dirtyVersion === 0 || period.status === "published") return
     const timer = setTimeout(async () => {
-      await saveHospitalityRows(period.id, congregationId, rowsRef.current)
+      const result = await safeSave(() => saveHospitalityRows(period.id, congregationId, rowsRef.current))
+      setSaveError(result.error)
     }, 1000)
     return () => clearTimeout(timer)
   }, [congregationId, dirtyVersion, isAdmin, period.id, period.status])
@@ -89,7 +93,8 @@ export function HospitalityEditor({
   function doPublish() {
     setShowConfirm(false)
     startPublishTransition(async () => {
-      const saveResult = await saveHospitalityRows(period.id, congregationId, rowsRef.current)
+      const saveResult = await safeSave(() => saveHospitalityRows(period.id, congregationId, rowsRef.current))
+      setSaveError(saveResult.error)
       if (saveResult.error) return
       await publishPeriod(period.id, basePath)
       router.refresh()
@@ -98,7 +103,8 @@ export function HospitalityEditor({
 
   function handleSavePublished() {
     startPublishTransition(async () => {
-      const result = await saveHospitalityRows(period.id, congregationId, rowsRef.current)
+      const result = await safeSave(() => saveHospitalityRows(period.id, congregationId, rowsRef.current))
+      setSaveError(result.error)
       if (!result.error) router.refresh()
     })
   }
@@ -162,6 +168,7 @@ export function HospitalityEditor({
     <div className="space-y-6">
       {confirmDialog}
       {header}
+      <SaveErrorNotice error={saveError} />
       <div className="app-table-card">
         <table className="w-full border-collapse text-sm">
           <tbody>

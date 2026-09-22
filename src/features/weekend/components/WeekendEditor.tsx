@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation"
 import { PageHeading } from "@/components/layout/PageHeading"
 import { FormatCell } from "@/features/schedule-templates/components/FormatCell"
 import { PeriodBar } from "@/features/schedule-templates/components/PeriodBar"
+import { SaveErrorNotice } from "@/features/schedule-templates/components/SaveErrorNotice"
+import { safeSave } from "@/features/schedule-templates/utils/safeSave"
 import { formatFullDateSpanish } from "@/shared/utils/dates"
 import { saveWeekendRows } from "../actions/weekend"
+import { formatSpeaker } from "../utils/formatSpeaker"
 import { publishPeriod } from "@/features/schedule-templates/actions/periods"
 import { Button } from "@/components/ui/Button"
 import type { Database } from "@/types/database.types"
@@ -68,6 +71,7 @@ export function WeekendEditor({
   )
 
   const [dirtyVersion, setDirtyVersion] = useState(0)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [showErrors, setShowErrors] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [publishPending, startPublishTransition] = useTransition()
@@ -80,7 +84,8 @@ export function WeekendEditor({
   useEffect(() => {
     if (!isAdmin || dirtyVersion === 0 || period.status === "published") return
     const timer = setTimeout(async () => {
-      await saveWeekendRows(period.id, congregationId, rowsRef.current)
+      const result = await safeSave(() => saveWeekendRows(period.id, congregationId, rowsRef.current))
+      setSaveError(result.error)
     }, 1000)
     return () => clearTimeout(timer)
   }, [congregationId, dirtyVersion, isAdmin, period.id, period.status])
@@ -124,7 +129,8 @@ export function WeekendEditor({
   function doPublish() {
     setShowConfirm(false)
     startPublishTransition(async () => {
-      const saveResult = await saveWeekendRows(period.id, congregationId, rowsRef.current)
+      const saveResult = await safeSave(() => saveWeekendRows(period.id, congregationId, rowsRef.current))
+      setSaveError(saveResult.error)
       if (saveResult.error) return
       const publishResult = await publishPeriod(period.id, basePath)
       if (!publishResult.error) router.refresh()
@@ -133,7 +139,8 @@ export function WeekendEditor({
 
   function handleSavePublished() {
     startPublishTransition(async () => {
-      const saveResult = await saveWeekendRows(period.id, congregationId, rowsRef.current)
+      const saveResult = await safeSave(() => saveWeekendRows(period.id, congregationId, rowsRef.current))
+      setSaveError(saveResult.error)
       if (!saveResult.error) router.refresh()
     })
   }
@@ -194,6 +201,7 @@ export function WeekendEditor({
         />
         {publishControls}
       </PageHeading>
+      <SaveErrorNotice error={saveError} />
 
       {rows.map((row) => (
         <div
@@ -234,28 +242,34 @@ export function WeekendEditor({
             </div>
 
             <WeekendField label="Discursante:" wide>
-              <div className="grid items-baseline gap-x-1 gap-y-1 sm:grid-cols-[minmax(10rem,0.55fr)_auto_minmax(12rem,0.45fr)_auto]">
-                <FormatCell
-                  value={row.speaker_name}
-                  onChange={(v) =>
-                    updateField(row.meeting_date, "speaker_name", v)
-                  }
-                  readOnly={!isAdmin}
-                  placeholder="Nombre..."
-                  invalid={showErrors && !row.speaker_name.trim()}
-                />
-                <span className="text-sm text-[var(--muted)]">(</span>
-                <FormatCell
-                  value={row.speaker_congregation}
-                  onChange={(v) =>
-                    updateField(row.meeting_date, "speaker_congregation", v)
-                  }
-                  readOnly={!isAdmin}
-                  placeholder="Congregación"
-                  invalid={showErrors && !row.speaker_congregation.trim()}
-                />
-                <span className="text-sm text-[var(--muted)]">)</span>
-              </div>
+              {isAdmin ? (
+                <div className="grid items-baseline gap-x-1 gap-y-1 sm:grid-cols-[minmax(10rem,0.55fr)_auto_minmax(12rem,0.45fr)_auto]">
+                  <FormatCell
+                    value={row.speaker_name}
+                    onChange={(v) =>
+                      updateField(row.meeting_date, "speaker_name", v)
+                    }
+                    readOnly={false}
+                    placeholder="Nombre..."
+                    invalid={showErrors && !row.speaker_name.trim()}
+                  />
+                  <span className="hidden text-sm text-[var(--muted)] sm:inline">(</span>
+                  <FormatCell
+                    value={row.speaker_congregation}
+                    onChange={(v) =>
+                      updateField(row.meeting_date, "speaker_congregation", v)
+                    }
+                    readOnly={false}
+                    placeholder="Congregación"
+                    invalid={showErrors && !row.speaker_congregation.trim()}
+                  />
+                  <span className="hidden text-sm text-[var(--muted)] sm:inline">)</span>
+                </div>
+              ) : (
+                <span className="block break-words">
+                  {formatSpeaker(row.speaker_name, row.speaker_congregation)}
+                </span>
+              )}
             </WeekendField>
 
             <WeekendField label="Discurso:" wide indent>

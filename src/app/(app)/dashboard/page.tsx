@@ -6,10 +6,13 @@ import {
   ClipboardList,
 } from "lucide-react"
 import { getAppContext } from "@/shared/auth/appContext"
+import { combineNames } from "@/features/midweek/utils/combineNames"
+import { formatSpeaker } from "@/features/weekend/utils/formatSpeaker"
 import {
   formatFullDateSpanish,
   formatShortDateSpanish,
   getMonthStartEnd,
+  getTodayDateString,
 } from "@/shared/utils/dates"
 import type { Database } from "@/types/database.types"
 
@@ -38,8 +41,7 @@ type UpcomingMeeting = {
 type MidweekAssignment = {
   id: string
   title: string
-  assignedName: string | null
-  assistantName: string | null
+  names: string
 }
 
 const midweekSectionOrder: Record<MidweekPart["section"], number> = {
@@ -59,15 +61,7 @@ function addDays(date: Date, days: number): Date {
 }
 
 function todayInMexico(): Date {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Mexico_City",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date())
-  const year = Number(parts.find((p) => p.type === "year")?.value)
-  const month = Number(parts.find((p) => p.type === "month")?.value)
-  const day = Number(parts.find((p) => p.type === "day")?.value)
+  const [year, month, day] = getTodayDateString().split("-").map(Number)
   return new Date(year, month - 1, day)
 }
 
@@ -147,11 +141,6 @@ function byDate<T extends { meeting_date?: string; service_date?: string }>(
   )
 }
 
-function namesList(values: Array<string | null | undefined>): string {
-  const filled = values.filter((value): value is string => Boolean(value?.trim()))
-  return filled.length > 0 ? filled.join(", ") : "Sin asignar"
-}
-
 function getMidweekAssignments(parts: MidweekPart[]): MidweekAssignment[] {
   return [...parts]
     .sort((a, b) =>
@@ -162,14 +151,13 @@ function getMidweekAssignments(parts: MidweekPart[]): MidweekAssignment[] {
     .map((part) => ({
       id: part.id,
       title: part.title?.trim() || `Asignación ${part.sort_order}`,
-      assignedName: part.assigned_name,
-      assistantName: part.assistant_name,
+      names: combineNames(part.assigned_name, part.assistant_name),
     }))
 }
 
 function formatServiceTime(value: string | null): string {
   const trimmed = value?.trim() ?? ""
-  const match = trimmed.match(/^(\d{2}):(\d{2})$/)
+  const match = trimmed.match(/^(\d{2}):(\d{2})(?::\d{2})?$/)
   if (!match) return valueOrEmpty(value)
 
   const hours = Number(match[1])
@@ -410,12 +398,12 @@ export default async function DashboardPage() {
                 ["Oración inicial", valueOrEmpty(weekendRow?.opening_prayer_name)],
                 [
                   "Discursante",
-                  namesList([
-                    weekendRow?.speaker_name,
-                    weekendRow?.speaker_congregation
-                      ? `(${weekendRow.speaker_congregation})`
-                      : null,
-                  ]),
+                  valueOrEmpty(
+                    formatSpeaker(
+                      weekendRow?.speaker_name,
+                      weekendRow?.speaker_congregation,
+                    ),
+                  ),
                 ],
                 ["Discurso", valueOrEmpty(weekendRow?.outline_title)],
                 ["Conductor", valueOrEmpty(weekendRow?.wt_conductor_name)],
@@ -616,35 +604,16 @@ function MidweekAssignments({
         Asignaciones
       </p>
       <ul className="space-y-3">
-        {assignments.flatMap((assignment) => {
-          const isBibleStudy = /\bebc\b|estudio bíblico/i.test(assignment.title)
-          const items = [
-            {
-              key: `${assignment.id}-assigned`,
-              label: isBibleStudy ? `${assignment.title} · Conductor` : assignment.title,
-              value: assignment.assignedName,
-            },
-          ]
-
-          if (isBibleStudy && assignment.assistantName?.trim()) {
-            items.push({
-              key: `${assignment.id}-reader`,
-              label: `${assignment.title} · Lector`,
-              value: assignment.assistantName,
-            })
-          }
-
-          return items.map((item) => (
-            <li key={item.key} className="rounded-2xl bg-[var(--surface-subtle)] px-3 py-3">
-              <p className="text-[0.68rem] font-bold uppercase tracking-wide text-[var(--muted)]">
-                {item.label}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">
-                {valueOrEmpty(item.value)}
-              </p>
-            </li>
-          ))
-        })}
+        {assignments.map((assignment) => (
+          <li key={assignment.id} className="rounded-2xl bg-[var(--surface-subtle)] px-3 py-3">
+            <p className="text-[0.68rem] font-bold uppercase tracking-wide text-[var(--muted)]">
+              {assignment.title}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">
+              {valueOrEmpty(assignment.names)}
+            </p>
+          </li>
+        ))}
       </ul>
     </div>
   )

@@ -6,6 +6,9 @@ import { Gem, HeartHandshake, Wheat, type LucideIcon } from "lucide-react"
 import { PageHeading } from "@/components/layout/PageHeading"
 import { FormatCell } from "@/features/schedule-templates/components/FormatCell"
 import { PeriodBar } from "@/features/schedule-templates/components/PeriodBar"
+import { SaveErrorNotice } from "@/features/schedule-templates/components/SaveErrorNotice"
+import { safeSave } from "@/features/schedule-templates/utils/safeSave"
+import { combineNames } from "../utils/combineNames"
 import { formatFullDateSpanish } from "@/shared/utils/dates"
 import { saveMidweekWeek } from "../actions/midweek"
 import { publishPeriod } from "@/features/schedule-templates/actions/periods"
@@ -106,14 +109,6 @@ function dedupeParts(parts: PartState[]): PartState[] {
   )
 }
 
-/** Responsible and helper share one field: "Responsable / Ayudante". */
-function combineNames(...names: Array<string | null | undefined>): string {
-  return names
-    .map((name) => name?.trim() ?? "")
-    .filter(Boolean)
-    .join(" / ")
-}
-
 function defaultParts(): PartState[] {
   return [
     { section: "treasures", sort_order: 1, title: "", duration_minutes: 10, assigned_name: "", assistant_name: "" },
@@ -187,6 +182,8 @@ export function MidweekEditor({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [publishPending, startPublishTransition] = useTransition()
   const weeksRef = useRef(weeks)
+  // Saves run one at a time so overlapping saves of a week never race.
+  const saveChainRef = useRef<Promise<unknown>>(Promise.resolve())
 
   useEffect(() => {
     weeksRef.current = weeks
@@ -202,20 +199,26 @@ export function MidweekEditor({
   }
 
   function persistWeek(w: WeekState) {
-    return saveMidweekWeek(
-      period.id,
-      congregationId,
-      {
-        meeting_date: w.meeting_date,
-        chairman_name: w.chairman_name,
-        opening_song: w.opening_song,
-        opening_prayer_name: w.opening_prayer_name,
-        mid_song: w.mid_song,
-        closing_song: w.closing_song,
-        closing_prayer_name: w.closing_prayer_name,
-      },
-      w.parts,
+    const run = saveChainRef.current.then(() =>
+      safeSave(() =>
+        saveMidweekWeek(
+          period.id,
+          congregationId,
+          {
+            meeting_date: w.meeting_date,
+            chairman_name: w.chairman_name,
+            opening_song: w.opening_song,
+            opening_prayer_name: w.opening_prayer_name,
+            mid_song: w.mid_song,
+            closing_song: w.closing_song,
+            closing_prayer_name: w.closing_prayer_name,
+          },
+          w.parts,
+        ),
+      ),
     )
+    saveChainRef.current = run
+    return run
   }
 
   // Debounced autosave: persist touched weeks ~1s after the last edit.
@@ -224,12 +227,14 @@ export function MidweekEditor({
     const timer = setTimeout(async () => {
       const dates = [...dirtyDates]
       setDirtyDates(new Set())
+      let firstError: string | null = null
       for (const date of dates) {
         const w = weeksRef.current.find((x) => x.meeting_date === date)
         if (!w) continue
         const result = await persistWeek(w)
-        setSaveError(result.error)
+        firstError ??= result.error
       }
+      setSaveError(firstError)
     }, 1000)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -446,14 +451,7 @@ export function MidweekEditor({
     </div>
   ) : null
 
-  const saveErrorNotice = saveError ? (
-    <p
-      role="alert"
-      className="rounded-2xl bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-4 py-3 text-sm font-semibold text-[var(--danger)]"
-    >
-      No se pudieron guardar los cambios. Intenta de nuevo.
-    </p>
-  ) : null
+  const saveErrorNotice = <SaveErrorNotice error={saveError} />
 
   const header = (
     <PageHeading title="Reunión Semanal">
@@ -486,7 +484,7 @@ export function MidweekEditor({
               >
                 {formatFullDateSpanish(week.meeting_date)}
               </td>
-              <td className="border-b border-[var(--border)] px-3 py-2">
+              <td className="min-w-[10rem] border-b border-[var(--border)] px-3 py-2">
                 <div className="flex items-baseline gap-2">
                   <span className="whitespace-nowrap text-xs font-semibold">
                     Presidente:
@@ -844,9 +842,9 @@ function PartRow({
           ""
         )}
       </td>
-      <td className="border-r border-[var(--border)] px-3 py-1.5">
+      <td className="hyphens-auto border-r border-[var(--border)] px-3 py-1.5">
         <div className="flex items-baseline gap-1">
-          <span className="text-[var(--muted)]">{number}.-</span>
+          <span className="shrink-0 whitespace-nowrap text-[var(--muted)]">{number}.-</span>
           <FormatCell
             value={part.title}
             onChange={onTitle}

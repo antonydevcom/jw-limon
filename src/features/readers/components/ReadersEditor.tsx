@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { PageHeading } from "@/components/layout/PageHeading"
 import { FormatCell } from "@/features/schedule-templates/components/FormatCell"
 import { PeriodBar } from "@/features/schedule-templates/components/PeriodBar"
+import { SaveErrorNotice } from "@/features/schedule-templates/components/SaveErrorNotice"
+import { safeSave } from "@/features/schedule-templates/utils/safeSave"
 import { Button } from "@/components/ui/Button"
 import { formatShortDateSpanish } from "@/shared/utils/dates"
 import { saveReaderRows } from "../actions/readers"
@@ -87,6 +89,7 @@ export function ReadersEditor({
     buildInitialRows(sundays, tuesdays, savedRows),
   )
   const [dirtyVersion, setDirtyVersion] = useState(0)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [showErrors, setShowErrors] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [publishPending, startPublishTransition] = useTransition()
@@ -99,7 +102,8 @@ export function ReadersEditor({
   useEffect(() => {
     if (!isAdmin || dirtyVersion === 0 || period.status === "published") return
     const timer = setTimeout(async () => {
-      await saveReaderRows(period.id, congregationId, rowsRef.current)
+      const result = await safeSave(() => saveReaderRows(period.id, congregationId, rowsRef.current))
+      setSaveError(result.error)
     }, 1000)
     return () => clearTimeout(timer)
   }, [congregationId, dirtyVersion, isAdmin, period.id, period.status])
@@ -131,7 +135,8 @@ export function ReadersEditor({
   function doPublish() {
     setShowConfirm(false)
     startPublishTransition(async () => {
-      const saveResult = await saveReaderRows(period.id, congregationId, rowsRef.current)
+      const saveResult = await safeSave(() => saveReaderRows(period.id, congregationId, rowsRef.current))
+      setSaveError(saveResult.error)
       if (saveResult.error) return
       await publishPeriod(period.id, basePath)
       router.refresh()
@@ -140,7 +145,8 @@ export function ReadersEditor({
 
   function handleSavePublished() {
     startPublishTransition(async () => {
-      const result = await saveReaderRows(period.id, congregationId, rowsRef.current)
+      const result = await safeSave(() => saveReaderRows(period.id, congregationId, rowsRef.current))
+      setSaveError(result.error)
       if (!result.error) router.refresh()
     })
   }
@@ -204,6 +210,7 @@ export function ReadersEditor({
     <div className="space-y-6">
       {confirmDialog}
       {header}
+      <SaveErrorNotice error={saveError} />
       <div className="app-table-card">
         <table className="w-full border-collapse text-sm">
           <tbody>
@@ -212,7 +219,7 @@ export function ReadersEditor({
                 key={`${row.meeting_date}-${row.reader_type}`}
                 className="border-b border-[var(--border)] last:border-b-0"
               >
-                <td className="w-20 border-r border-[var(--border)] px-3 py-2 text-[var(--muted)]">
+                <td className="whitespace-nowrap border-r border-[var(--border)] px-3 py-2 text-[var(--muted)]">
                   {formatShortDateSpanish(row.meeting_date)}
                 </td>
                 <td className="w-28 border-r border-[var(--border)] px-3 py-2 text-[var(--foreground)]">

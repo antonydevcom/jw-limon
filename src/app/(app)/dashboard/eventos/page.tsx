@@ -1,19 +1,10 @@
 import { PageHeading } from "@/components/layout/PageHeading"
 import { getAppContext } from "@/shared/auth/appContext"
+import { getTodayDateString } from "@/shared/utils/dates"
 import { EventForm } from "@/features/events/components/EventForm"
 import { EventCard } from "@/features/events/components/EventCard"
 
 export const metadata = { title: "Eventos" }
-
-function todayString(): string {
-  const d = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Mexico_City",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date())
-  return d
-}
 
 export default async function EventosPage() {
   const { supabase, congregationId, role } = await getAppContext()
@@ -27,7 +18,7 @@ export default async function EventosPage() {
     )
   }
 
-  const today = todayString()
+  const today = getTodayDateString()
 
   const [{ data: upcoming }, { data: past }] = await Promise.all([
     supabase

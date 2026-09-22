@@ -111,10 +111,21 @@ export function getMonthDatesForWeekdays(
   return dates
 }
 
+const CONGREGATION_TIME_ZONE = "America/Mexico_City"
+
+/** Today as "2026-07-07" in the congregation's time zone (servers run in UTC). */
+export function getTodayDateString(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: CONGREGATION_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date())
+}
+
 /** Current year-month: "2026-07" */
 export function getCurrentYearMonth(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+  return getTodayDateString().slice(0, 7)
 }
 
 /** "2026-07" → "2026-06" */

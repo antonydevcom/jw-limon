@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import { Check } from "lucide-react"
 import { PageHeading } from "@/components/layout/PageHeading"
 import { FormatCell } from "@/features/schedule-templates/components/FormatCell"
+import { SaveErrorNotice } from "@/features/schedule-templates/components/SaveErrorNotice"
+import { safeSave } from "@/features/schedule-templates/utils/safeSave"
 import { saveFieldServiceRows } from "../actions/fieldService"
 import type { Database } from "@/types/database.types"
 
@@ -179,6 +181,7 @@ export function FieldServiceEditor({
   })
 
   const [dirtyVersion, setDirtyVersion] = useState(0)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const cellsRef = useRef(cells)
 
   useEffect(() => {
@@ -201,7 +204,8 @@ export function FieldServiceEditor({
           }
         }),
       )
-      await saveFieldServiceRows(congregationId, rows)
+      const result = await safeSave(() => saveFieldServiceRows(congregationId, rows))
+      setSaveError(result.error)
     }, 1000)
     return () => clearTimeout(timer)
   }, [congregationId, dirtyVersion, isAdmin])
@@ -295,6 +299,7 @@ export function FieldServiceEditor({
   return (
     <div className="space-y-6">
       <PageHeading title="Servicio" />
+      <SaveErrorNotice error={saveError} />
 
       <div className="app-table-card">
         <table className="w-full border-collapse text-sm">
